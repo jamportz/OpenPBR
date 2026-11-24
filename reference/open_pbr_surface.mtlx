@@ -616,49 +616,25 @@
       <input name="in1" type="color3" nodename="base_color_clamped" />
       <input name="in2" type="float" nodename="base_weight_clamped" />
     </multiply>
-    <!-- specular_weight > 1 boosts the metal colors (each clamped to [0, 1]), while w = min(specular_weight, 1)
-         modulates the metal's complex IOR -->
-    <min name="metal_weight" type="float">
-      <input name="in1" type="float" nodename="specular_weight_nonnegative" />
-      <input name="in2" type="float" value="1.0" />
-    </min>
-    <max name="metal_boost" type="float">
-      <input name="in1" type="float" nodename="specular_weight_nonnegative" />
-      <input name="in2" type="float" value="1.0" />
-    </max>
-    <multiply name="metal_F0_boosted" type="color3">
-      <input name="in1" type="color3" nodename="metal_reflectivity" />
-      <input name="in2" type="float" nodename="metal_boost" />
-    </multiply>
-    <min name="metal_F0" type="color3">
-      <input name="in1" type="color3" nodename="metal_F0_boosted" />
-      <input name="in2" type="float" value="1.0" />
-    </min>
-    <multiply name="metal_tint_boosted" type="color3">
-      <input name="in1" type="color3" nodename="specular_color_clamped" />
-      <input name="in2" type="float" nodename="metal_boost" />
-    </multiply>
-    <min name="metal_tint" type="color3">
-      <input name="in1" type="color3" nodename="metal_tint_boosted" />
-      <input name="in2" type="float" value="1.0" />
-    </min>
-    <!-- The metal is the conductor with reflectance metal_F0 at normal incidence and metal_tint times the Schlick
-         reflectance at the grazing angle cosine 1/7 (about 82 degrees). Its normal-incidence reflection amplitude is
-         R0 = sqrt(F0) (cos phi + i sin phi). specular_weight scales R0 by sqrt(w), keeping its phase, and the modulated
-         complex IOR is then (1 + R0')/(1 - R0'), whose real part simplifies to (1 - w F0)/|1 - R0'|^2. -->
+    <!-- The metal is the conductor with reflectance F0 = base_weight * base_color at normal incidence, and specular_color
+         times the Schlick reflectance at the grazing angle cosine 1/7 (about 82 degrees). Its normal-incidence reflection
+         amplitude is R0 = sqrt(F0) (cos phi + i sin phi). As for the dielectric, specular_weight scales the reflectance at
+         normal incidence to specular_weight * F0, capped just below 1, keeping the phase of R0. The modulated complex IOR
+         is then (1 + R0')/(1 - R0'), whose real part simplifies to (1 - F0')/|1 - R0'|^2, with F0' the modulated
+         reflectance. -->
     <open_pbr_metal_phase name="metal_phase_cosine" type="color3">
-      <input name="F0" type="color3" nodename="metal_F0" />
-      <input name="tint" type="color3" nodename="metal_tint" />
+      <input name="F0" type="color3" nodename="metal_reflectivity" />
+      <input name="tint" type="color3" nodename="specular_color_clamped" />
     </open_pbr_metal_phase>
-    <clamp name="metal_F0_safe" type="color3">
-      <input name="in" type="color3" nodename="metal_F0" />
-      <input name="low" type="float" value="0.0001" />
-      <input name="high" type="float" value="0.9999" />
-    </clamp>
-    <multiply name="metal_F0_modulated" type="color3">
-      <input name="in1" type="color3" nodename="metal_F0_safe" />
-      <input name="in2" type="float" nodename="metal_weight" />
+    <multiply name="metal_F0_scaled" type="color3">
+      <input name="in1" type="color3" nodename="metal_reflectivity" />
+      <input name="in2" type="float" nodename="specular_weight_nonnegative" />
     </multiply>
+    <clamp name="metal_F0_modulated" type="color3">
+      <input name="in" type="color3" nodename="metal_F0_scaled" />
+      <input name="low" type="float" value="0.0" />
+      <input name="high" type="float" value="0.99999" />
+    </clamp>
     <power name="metal_R0_magnitude" type="color3">
       <input name="in1" type="color3" nodename="metal_F0_modulated" />
       <input name="in2" type="float" value="0.5" />
@@ -792,11 +768,10 @@
       <input name="in1" type="float" value="1.0" />
       <input name="in2" type="float" nodename="one_minus_coat_F0_over_eta2" />
     </subtract>
-    <!-- Approximate base metal albedo estimate, Emetal  -->
-    <multiply name="Emetal" type="color3">
-      <input name="in1" type="color3" nodename="metal_F0" />
-      <input name="in2" type="float" nodename="metal_weight" />
-    </multiply>
+    <!-- Approximate base metal albedo estimate, Emetal: the modulated reflectance at normal incidence  -->
+    <dot name="Emetal" type="color3">
+      <input name="in" type="color3" nodename="metal_F0_modulated" />
+    </dot>
     <!-- Approximate base dielectric albedo estimate, Edielectric  -->
     <mix name="Edielectric" type="color3">
       <input name="fg" type="color3" nodename="subsurface_color_clamped" />
@@ -1017,7 +992,7 @@
     <clamp name="F0_safe" type="color3">
       <input name="in" type="color3" interfacename="F0" />
       <input name="low" type="float" value="0.0001" />
-      <input name="high" type="float" value="0.9999" />
+      <input name="high" type="float" value="0.99999" />
     </clamp>
     <power name="amplitude" type="color3">
       <input name="in1" type="color3" nodename="F0_safe" />
