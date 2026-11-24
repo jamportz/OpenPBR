@@ -543,7 +543,7 @@ F_\mathrm{conductor}(\mu;\, \tilde{n}) = \frac{1}{2} \left( \left| \frac{\mu - \
 The complex IOR of the metal is not itself a parameter. It is determined by the two metal colors, and then modulated by **`specular_weight`**, as follows:
 
   1. The parameters are the reflectivity at normal incidence $\mathbf{F}_0$, and the edge tint $\mathbf{C}_s$ (equation [metal_colors]).
-  2. These define the reflectivity $\mathbf{F}(\bar{\mu})$ at a grazing angle of about $82^\circ$, as the fraction $\mathbf{C}_s$ of the Schlick approximation's reflectivity there (equation [metal_edge]).
+  2. These define the reflectivity $\mathbf{F}_{82}$ at a grazing angle of about $82^\circ$, as the fraction $\mathbf{C}_s$ of the Schlick approximation's reflectivity there (equation [metal_edge]).
   3. The complex IOR $\tilde{\mathbf{n}}$ then follows uniquely, in each color channel, as that of the conductor with these two reflectivities (equation [metal_ior]).
   4. The **`specular_weight`** modulates $\tilde{\mathbf{n}}$ in the same way as the IOR of the dielectric base (equation [modulated_metal_ior]).
 
@@ -553,17 +553,17 @@ The colors $\mathbf{F}_0$ and $\mathbf{C}_s$ are derived from **`base_weight`** 
 \end{equation}
 Following [#Hoffman2019], the edge tint $\mathbf{C}_s$ specifies the reflectivity at the "grazing edge" angle cosine $\bar{\mu} = 1/7$, corresponding roughly to $82^\circ$ (i.e. around silhouettes), as a fraction of the standard Schlick approximation $\mathbf{F}_{\mathrm{Schlick}}(\mu) = \mathbf{F}_0 + (1 - \mathbf{F}_0) (1 - \mu)^5$:
 \begin{equation} \label{metal_edge}
-\mathbf{F}(\bar{\mu}) = \mathbf{C}_s \, \mathbf{F}_\mathrm{Schlick}(\bar{\mu}) \ .
+\mathbf{F}_{82} = \mathbf{C}_s \, \mathbf{F}_\mathrm{Schlick}(\bar{\mu}) \ .
 \end{equation}
 In each channel, the complex IOR $\tilde{n}$ of the metal is then that of the conductor which reproduces both reflectivities:
 \begin{equation} \label{metal_ior}
-F_\mathrm{conductor}(1;\, \tilde{n}) = F_0 \ , \quad F_\mathrm{conductor}(\bar{\mu};\, \tilde{n}) = F(\bar{\mu}) \ .
+F_\mathrm{conductor}(1;\, \tilde{n}) = F_0 \ , \quad F_\mathrm{conductor}(\bar{\mu};\, \tilde{n}) = F_{82} \ .
 \end{equation}
-It is convenient to work with the reflection amplitude at normal incidence, $R_0 = (\tilde{n} - 1)/(\tilde{n} + 1)$, in terms of which $\tilde{n} = (1 + R_0)/(1 - R_0)$ and $F_\mathrm{conductor}(1;\, \tilde{n}) = |R_0|^2$. The first condition of equation [metal_ior] fixes the magnitude $|R_0| = \sqrt{F_0}$, and the second then fixes its phase uniquely, in the range $[0, \pi]$ (since $k \ge 0$). The solution is given to a good approximation by [^metal_ior_inversion]
+It is convenient to work with the reflection amplitude at normal incidence, $R_0 = (\tilde{n} - 1)/(\tilde{n} + 1)$, in terms of which $\tilde{n} = (1 + R_0)/(1 - R_0)$ and $F_\mathrm{conductor}(1;\, \tilde{n}) = |R_0|^2$. The first condition of equation [metal_ior] fixes the magnitude $|R_0| = \sqrt{F_0}$, and the second then fixes its phase uniquely, in the range $[0, \pi]$ (since $k \ge 0$). We currently recommend computing it with the following closed-form approximation, which is exact for good conductors ($|\tilde{n}| \gg 1$): [^metal_ior_inversion]
 \begin{equation} \label{metal_R0}
-R_0 = x + i \sqrt{F_0 - x^2} \ , \quad x = \frac{1 + F_0}{2\,(1 - \bar{\mu}^2)} \sqrt{\frac{p\,(m - F p)}{1 - F}} \ ,
+R_0 = x + i \sqrt{F_0 - x^2} \ , \quad x = \min\left(\sqrt{F_0}, \ \frac{\sqrt{c\,(c - 7\gamma)}}{24} \right) , \quad c = 16 + 9 F_0 \ , \quad \gamma = \frac{1 - F_0}{1 - F_{82}} \ .
 \end{equation}
-where $F = F(\bar{\mu})$, $p = 1 + \bar{\mu}^2 + 2a$, $m = 1 + \bar{\mu}^2 - 2a$ and $a = \bar{\mu}\,(1 - F_0)/(1 + F_0)$. The lowest reflectivity at $\bar{\mu}$ that any material with this $F_0$ can have is that of the dielectric ($k = 0$) with $R_0 = \sqrt{F_0}$, i.e. $n = (1 + \sqrt{F_0})/(1 - \sqrt{F_0})$. If $F(\bar{\mu})$ is lower than this, no conductor matches it, and this dielectric is used instead, so $x$ is limited to at most $\sqrt{F_0}$. This only occurs if $C_s$ is below a minimum value, which is between about $0.6$ and $0.97$ for $F_0$ between $0.3$ and $0.99$, below the range of real metals.
+Here $c$ is a coefficient between $16$ and $25$, and $\gamma$ is the ratio of the fractions of the light absorbed by the metal at normal incidence and at $\bar{\mu}$ (since the metal is opaque, it absorbs the fraction $1 - F$). The default (white) **`specular_color`** gives $\gamma \approx 1.86$ for any $F_0$, and darker edge tints give smaller $\gamma$. Since $C_s \le 1$, $\gamma$ is always less than $2$, so the square root is real. (At $F_0 = F_{82} = 1$, a perfect mirror, $\gamma$ is undefined, and implementations can clamp $F_0$ slightly below $1$.) The lowest reflectivity at $\bar{\mu}$ that any material with this $F_0$ can have is that of the dielectric ($k = 0$) with $R_0 = \sqrt{F_0}$, i.e. $n = (1 + \sqrt{F_0})/(1 - \sqrt{F_0})$. If $F_{82}$ is lower than this, no conductor matches it, and the $\min$ selects this dielectric, the closest match. This only occurs if $C_s$ is below a minimum value, which is between about $0.6$ and $0.97$ for $F_0$ between $0.3$ and $0.99$, below the range of real metals.
 
 The **`specular_weight`** then modulates the complex IOR in the same way as the IOR of the dielectric base (equation [modulated_ior]). With $w = \min(\xi_s, 1)$, the amplitude $R_0$ is scaled by $\sqrt{w}$:
 \begin{equation} \label{modulated_metal_ior}
@@ -573,13 +573,13 @@ This scales the reflectivity at normal incidence to $w F_0$ while keeping the ph
 \begin{equation} \label{metal_fresnel}
 \mathbf{F}_{\mathrm{metal}}(\mu) = F_\mathrm{conductor}(\mu;\, \tilde{\mathbf{n}}^\prime) \ .
 \end{equation}
-At $\xi_s = 1$, this passes exactly through both colors, $\mathbf{F}_0$ at normal incidence and $\mathbf{F}(\bar{\mu})$ at $\bar{\mu}$. [^f82_tint_model] As for the dielectric, the reflectivity of the modulated metal still rises to one at grazing incidence, so this is not an even scaling of the whole Fresnel curve.
+At $\xi_s = 1$, this passes through both colors, $\mathbf{F}_0$ at normal incidence and $\mathbf{F}_{82}$ at $\bar{\mu}$ (exactly for the solution of equation [metal_ior], and for the closed form of equation [metal_R0] exactly at normal incidence and closely at $\bar{\mu}$). [^f82_tint_model] As for the dielectric, the reflectivity of the modulated metal still rises to one at grazing incidence, so this is not an even scaling of the whole Fresnel curve.
 
 For $\xi_s > 1$, scaling the reflectivity directly would produce reflectivities greater than one, so instead the colors are boosted (equation [metal_colors]). The result remains a physical conductor, which tends to a perfect (white) mirror as $\xi_s \rightarrow \infty$, for non-zero **`base_color`** (since the boost is multiplicative, a channel which is zero in **`base_color`** remains zero for any $\xi_s$).
 
 For real metals, this Fresnel factor reproduces the measured curve very closely in each channel, since a real metal is a conductor with exactly these two reflectivities at each wavelength. It also makes the metal a well-defined physical substrate for the thin film, whose reflectance depends on the amplitude and phase of the reflection from the metal.
 
-In a spectral renderer, the two colors are converted to reflectance spectra $F_0(\lambda)$ and $F(\bar{\mu}; \lambda)$, using any suitable spectral uplifting, and equation [metal_ior], equation [modulated_metal_ior] and equation [metal_fresnel] are applied at each wavelength. Since reflectivities average linearly over the spectrum, this reproduces both colors at normal incidence and at $\bar{\mu}$. Applying the equations per RGB channel instead is an approximation to this spectral result away from normal incidence (most noticeably under a thin film).
+In a spectral renderer, the two colors are converted to reflectance spectra $F_0(\lambda)$ and $F_{82}(\lambda)$, using any suitable spectral uplifting, and equation [metal_ior], equation [modulated_metal_ior] and equation [metal_fresnel] are applied at each wavelength. Since reflectivities average linearly over the spectrum, this reproduces both colors at normal incidence and at $\bar{\mu}$. Applying the equations per RGB channel instead is an approximation to this spectral result away from normal incidence (most noticeably under a thin film).
 
 At the default **`specular_color`**, the edge reflectivity is that of the Schlick approximation, and the metallic Fresnel factor is then very close to the regular Schlick reflectivity (within $0.005$ at the default **`base_color`**). Note that the edge reflectivity at $\bar{\mu}$ cannot be brighter than the standard Schlick term, but this is generally true in real metals. We consider this a benefit of this parametrization, as it makes it impossible to produce physically implausible metals with excessively bright edges.
 
@@ -1709,6 +1709,8 @@ References
 
 [#Lagarde2014]: Sébastien Lagarde, Charles de Rousiers. *Moving Frostbite to Physically Based Rendering 3.0*, ACM SIGGRAPH Courses: Physically Based Shading in Theory and Practice (2014).
 
+[#Landau1984]: Lev D. Landau, Evgeny M. Lifshitz and Lev P. Pitaevskii. *Electrodynamics of Continuous Media*, 2nd edition, Pergamon Press (1984).
+
 [#Langlands2014]: Anders Langlands. *Physically Based Shader Design in Arnold*, ACM SIGGRAPH Talks (2014).
 
 [#Mazzone2023]: André Mazzone and Chris Rydalch. [*Standard Shader Ball: A Modern and Feature-Rich Render Test Scene*](https://github.com/usd-wg/assets/tree/main/full_assets/StandardShaderBall), ACM SIGGRAPH Asia (2023).
@@ -1730,8 +1732,6 @@ References
 [#Portsmouth2024]: Jamie Portsmouth, Peter Kutz and Stephen Hill. [*EON: A practical energy-preserving rough diffuse BRDF*](https://arxiv.org/abs/2410.18026) (2024).
 
 [#Portsmouth2025]: Jamie Portsmouth, Laurent Belcour, Matthias Raab and Francis Liu. *The Minimal Retroreflective Microfacet Model*, to appear (2025)
-
-[#Portsmouth2026]: Jamie Portsmouth. *Physicist Friendly Metallic Fresnel: From F0 and F82 to Spectral Optical Constants*, preparing for submission (2026).
 
 [#Revie2011]: Donald Revie, *Implementing Fur Using Deferred Shading*, GPU Pro 2 (2011).
 
@@ -1780,11 +1780,7 @@ where $\mathbf{F}^\prime_0 = w \mathbf{F}_0$, and $\mathbf{F}^\prime_\mathrm{Sch
 
 [^f82_tint_model]: At $\xi_s = 1$, the metal is close in appearance to the "F82-tint" model of [#Kutz2021] (extending [#Hoffman2019]) used in earlier versions of this specification, which passes through the same two reflectivities by adding a correction term to the Schlick approximation. For real metals the two differ by about $0.005$ to $0.05$ in reflectivity, most of all close to grazing incidence.
 
-[^metal_ior_inversion]: Equation [metal_R0] solves equation [metal_ior] exactly in the surface-impedance approximation of the Fresnel factor, which holds for good conductors ($|\tilde{n}| \gg 1$) [#Portsmouth2026]. It is accurate to about $0.005$ in reflectivity for typical metals, and can be made exact by a few Newton steps along the circle $|R_0| = \sqrt{F_0}$. With $v = \cos(\phi/2)$, where $\phi$ is the phase of $R_0$, so that $R_0 = \sqrt{F_0}\,\bigl(v + i\sqrt{1 - v^2}\bigr)^2$, start from $v = \sqrt{(1 + x/\sqrt{F_0})/2}$ and iterate
-\begin{equation}
-   v \leftarrow \mathrm{clamp}\bigl(v - G(v)/G^\prime(v), \, 0, \, 1\bigr) \ , \quad G(v) = F_\mathrm{conductor}\bigl(\bar{\mu};\, \tilde{n}(v)\bigr) - F(\bar{\mu}) \ ,
-\end{equation}
-with $G^\prime$ evaluated by a finite difference. For $F_0 \ge 0.02$, two steps give an error below $10^{-4}$ in reflectivity at every angle, and three steps below $10^{-5}$. Inputs that no conductor matches converge to $v = 1$.
+[^metal_ior_inversion]: Equation [metal_R0] is exact in the surface-impedance (Leontovich) approximation for good conductors, which sets $\mu_t \approx 1$ in equation [conductor_fresnel] [#Landau1984]. With $R_0 = x + i y$, the absorbed fraction at $\bar{\mu} = 1/7$ is then $1 - F_{82} = 7 c\,(1 - F_0)/(c^2 - 576 x^2)$, and solving for $x$ gives equation [metal_R0]. For $F_0 \ge 0.3$, the result is within about $0.01$ in reflectivity of the exact solution of equation [metal_ior], at every angle (with a median of $0.005$). If needed, the exact solution can be found by iterative refinement, since the reflectivity at $\bar{\mu}$ decreases monotonically with the phase of $R_0$.
 
 [^component_wise]: Note that in this concise notation, the scalar denotes a constant vector.
 
